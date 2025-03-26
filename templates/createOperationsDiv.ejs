@@ -1,0 +1,74 @@
+<div>
+  <div className="container mt-4">
+    <% fields.forEach(function(field, index) { 
+      if (field.name !== 'id' && !regex.test(field.name)) {
+        if (field.foreign) { 
+          const options = foreignkeyData[field.foreign] || [];
+          const filteredOptions = options.filter((option) =>
+            option[field.foreign_field].toLowerCase().includes((searchQueries[field.name] || '').toLowerCase())
+          );
+    %>
+      <div key="<%= index %>" className="dropdown">
+        <label style="display: block;">
+          <%= field.required ? '(<span style="color: red;">*</span>)' : '' %> <%= field.name %>
+        </label>
+        <button
+          className="btn btn-secondary dropdown-toggle"
+          type="button"
+          id="dropdownMenu-<%= field.name %>"
+          data-bs-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          <%= dataToSave[field.name]
+            ? (options.find((item) => item[field.foreign_field] === dataToSave[field.name])?.[field.foreign_field] || 'Select')
+            : `Select ${field.name}` %>
+        </button>
+        <div className="dropdown-menu" aria-labelledby="dropdownMenu-<%= field.name %>">
+          <input
+            type="text"
+            className="form-control mb-2"
+            placeholder="Search <%= field.name %>"
+            value="<%= searchQueries[field.name] || '' %>"
+            onChange="handleSearchChange('<%= field.name %>', this.value)"
+          />
+
+          <% if (filteredOptions.length > 0) { %>
+            <% filteredOptions.forEach(function(option, i) { %>
+              <button
+                key="<%= i %>"
+                className="dropdown-item"
+                type="button"
+                onClick="setDataToSave({ ...dataToSave, '<%= field.name %>': '<%= option[field.foreign_field] %>' })"
+              >
+                <%= option[field.foreign_field] %>
+              </button>
+            <% }); %>
+          <% } else { %>
+            <span className="dropdown-item text-muted">No options available</span>
+          <% } %>
+        </div>
+      </div>
+    <% } else { %>
+      <div key="<%= index %>" style="margin-bottom: 10px;">
+        <label style="display: block;">
+          <%= field.required ? '(<span style="color: red;">*</span>)' : '' %> <%= field.name %>
+        </label>
+        <input
+          type="<%= field.type %>"
+          name="<%= field.name %>"
+          required="<%= field.required %>"
+          placeholder="<%= field.name %>"
+          value="<%= dataToSave[field.name] || '' %>"
+          onChange="setDataToSave({ ...dataToSave, [this.name]: this.value })"
+          style="padding: 5px; width: 100%;"
+        />
+      </div>
+    <% } 
+    } 
+    }); %>
+    <button className="btn btn-success" onClick="handleCreate()">
+      Create
+    </button>
+  </div>
+</div>
