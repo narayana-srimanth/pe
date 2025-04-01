@@ -1,0 +1,175 @@
+import React, { useState, useEffect } from 'react';
+
+export type ResourceMetaData = {
+  resource: string;
+  fieldValues: any[];
+};
+
+const <%= operation %><%= resName %> = () => {
+  const [resMetaData, setResMetaData] = useState<ResourceMetaData[]>([]);
+  const [fields, setFields] = useState<any[]>([]);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const [foreignkeyData, setForeignkeyData] = useState<Record<string, any[]>>({});
+  const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
+  const [fetchData, setFetchedData] = useState<any[]>([]);
+  
+  const regex = /^(g_|archived|extra_data)/;
+  const apiUrl = '<%= apiConfig.getResourceUrl(resName.toLowerCase()) %>?';
+  const metadataUrl = '<%= apiConfig.getResourceMetaDataUrl(resName) %>?';
+
+  useEffect(() => {
+    const fetchResMetaData = async () => {
+      const fetchedResources = new Set();
+      try {
+        const data = await fetch(metadataUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (data.ok) {
+          const metaData = await data.json();
+          setResMetaData(metaData);
+          setFields(metaData[0].fieldValues);
+          const foreignFields = metaData[0].fieldValues.filter((field: any) => field.foreign);
+          for (const field of foreignFields) {
+            if (!fetchedResources.has(field.foreign)) {
+              fetchedResources.add(field.foreign);
+              await fetchForeignData(field.foreign, field.name, field.foreign_field);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching metadata:', error);
+      }
+    };
+
+    fetchResMetaData();
+  }, []);
+
+  useEffect(() => {
+    fetchResourceData();
+  }, []);
+
+  const fetchResourceData = async () => {
+    const params = new URLSearchParams();
+    const ssid: any = sessionStorage.getItem('key');
+    params.append('queryId', 'GET_ALL');
+    params.append('session_id', ssid);
+
+    try {
+      const response = await fetch(apiUrl + params.toString(), {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFetchedData(data.resource || []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  const fetchForeignData = async (foreignResource: string, fieldName: string, foreignField: string) => {
+    try {
+      const params = new URLSearchParams();
+      const ssid: any = sessionStorage.getItem('key');
+      params.append('queryId', 'GET_ALL');
+      params.append('session_id', ssid);
+
+      const response = await fetch(
+        `<%= apiConfig.API_BASE_URL %>/${foreignResource.toLowerCase()}?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setForeignkeyData((prev) => ({
+          ...prev,
+          [foreignResource]: data.resource
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching foreign data for ${fieldName}:`, error);
+    }
+  };
+
+  const handleEdit = (item: any) => {
+    setSelectedItem(item);
+  };
+
+  const handleFieldChange = (fieldName: string, value: any) => {
+    setSelectedItem((prev: any) => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
+  const handleSearchChange = (fieldName: string, value: string) => {
+    setSearchQueries((prev) => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    const jsonString = JSON.stringify(selectedItem);
+    const base64Encoded = btoa(jsonString);
+    params.append('resource', base64Encoded);
+    const ssid: any = sessionStorage.getItem('key');
+    params.append('session_id', ssid);
+
+    try {
+      const response = await fetch(apiUrl + params.toString(), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      if (response.ok) {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+        setSelectedItem(null);
+        fetchResourceData();
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedItem(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    const ssid: any = sessionStorage.getItem('key');
+    params.append('session_id', ssid);
+    params.append('id', id);
+
+    try {
+      const response = await fetch(apiUrl + params.toString(), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      if (response.ok) {
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+        fetchResourceData();
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };

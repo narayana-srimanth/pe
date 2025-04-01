@@ -1,0 +1,85 @@
+<div>
+  <div className="container mt-4">
+    {selectedItem ? (
+      <div>
+        <h3>Edit Item</h3>
+        <form onSubmit={handleUpdate}>
+          {fields.map((field, index) => {
+            if (field.name !== 'id' && !regex.test(field.name)) {
+              if (field.foreign) {
+                const options = foreignkeyData[field.foreign] || [];
+                const filteredOptions = options.filter((option) =>
+                  option[field.foreign_field].toLowerCase().includes((searchQueries[field.name] || '').toLowerCase())
+                );
+                return (
+                  <div key={index} className="mb-3">
+                    <label className="form-label">
+                      {field.required && <span className="text-danger">*</span>} {field.name}
+                    </label>
+                    <div className="dropdown">
+                      <button
+                        className="btn btn-secondary dropdown-toggle"
+                        type="button"
+                        id={`dropdownMenu-${field.name}`}
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                      >
+                        {selectedItem[field.name] || `Select ${field.name}`}
+                      </button>
+                      <ul className="dropdown-menu" aria-labelledby={`dropdownMenu-${field.name}`}>
+                        <li>
+                          <input
+                            type="text"
+                            className="form-control mx-2"
+                            style={{ width: '90%' }}
+                            placeholder="Search..."
+                            value={searchQueries[field.name] || ''}
+                            onChange={(e) => handleSearchChange(field.name, e.target.value)}
+                          />
+                        </li>
+                        {filteredOptions.map((option, i) => (
+                          <li key={i}>
+                            <button
+                              className="dropdown-item"
+                              type="button"
+                              onClick={() => handleFieldChange(field.name, option[field.foreign_field])}
+                            >
+                              {option[field.foreign_field]}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              } else {
+                return (
+                  <div key={index} className="mb-3">
+                    <label className="form-label">
+                      {field.required && <span className="text-danger">*</span>} {field.name}
+                    </label>
+                    <input
+                      type={field.type}
+                      className="form-control"
+                      name={field.name}
+                      value={selectedItem[field.name] || ''}
+                      onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                      required={field.required}
+                    />
+                  </div>
+                );
+              }
+            }
+            return null;
+          })}
+          <div className="mt-3">
+            <button type="submit" className="btn btn-primary me-2">Update</button>
+            <button type="button" className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    ) : (
+      <div className="alert alert-info">Select an item to edit</div>
+    )}
+  </div>
+</div>
